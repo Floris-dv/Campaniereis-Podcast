@@ -345,7 +345,8 @@ class _Player extends State<Player> {
                           }
                           return PlayerButtons(
                               _audioPlayer, trackWidgets[snapshot.data!].asset);
-                        })
+                        }),
+                    for (var l in logging) Text(l)
                   ]),
                 ),
               )),

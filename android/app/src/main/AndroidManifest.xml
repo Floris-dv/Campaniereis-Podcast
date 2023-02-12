@@ -5,7 +5,7 @@
         android:usesCleartextTraffic="true" 
         android:label="Campaniereis podcasts"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/launcher_icon"
        tools:targetApi="m">
         <activity
             android:name=".MainActivity"
