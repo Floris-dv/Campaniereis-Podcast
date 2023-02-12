@@ -1,16 +1,13 @@
-# flutterapp
+# Campaniëreis Podcast
 
-A new Flutter project.
+Een relatief klein project om een podcast app te maken voor de Campaniëreis
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Installeren voor android
+1. Installeer de [Android SDK](https://developer.android.com/about/versions/11/setup-sdk)
+2. Installeer [Flutter](https://docs.flutter.dev/get-started/install)
+3. Run `flutter build apk` in de command line in deze folder
+4. Installeer de apk op jouw telefoon
+## Web-dingen creëren
+1. Installeer [Flutter](https://docs.flutter.dev/get-started/install)
+2. Run `flutter build web` in de command line in deze folder
+3. Run de gecreëerde bestanden in een webbrowser
