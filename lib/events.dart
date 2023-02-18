@@ -28,6 +28,9 @@ class ButtonEvents {
 
   static void subscribe(EventHandler<ButtonAction> f) => _event.subscribe(f);
 
+  static void unsubscribe(EventHandler<ButtonAction> f) =>
+      _event.unsubscribe(f);
+
   static void broadcast(ButtonAction action) => _event.broadcast(action);
 
   static void subscribeStream(StreamSink sink) => _event.subscribeStream(sink);
@@ -37,6 +40,7 @@ enum WidgetActions {
   setTime, // For animation
   pause,
   play,
+  end,
 }
 
 class WidgetAction extends EventArgs {

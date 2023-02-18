@@ -1,17 +1,20 @@
+import 'dart:async';
 import 'package:campaniereis/track_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:campaniereis/events.dart';
 
 class SettingsWidget extends StatelessWidget {
-  const SettingsWidget(this._audioPlayer, this.trackWidgets, this._autoPause,
-      {super.key});
-
   final AudioPlayer _audioPlayer;
 
   final List<TrackWidget> trackWidgets;
 
-  final bool _autoPause;
+  final controller = StreamController<bool>();
+
+  SettingsWidget(this._audioPlayer, this.trackWidgets, bool _autoPause,
+      {super.key}) {
+    controller.add(_autoPause);
+  }
 
   Widget _speedWidget(BuildContext context, double? speed) {
     if (speed == null) return const SizedBox.shrink();
@@ -21,7 +24,8 @@ class SettingsWidget extends StatelessWidget {
         width: MediaQuery.of(context).size.width - 120.0,
         child: Slider(
           value: speed,
-          max: 5.0,
+          min: 0.5,
+          max: 2.0,
           onChanged: (speed) => _audioPlayer.setSpeed(speed),
         ),
       )
@@ -55,40 +59,38 @@ class SettingsWidget extends StatelessWidget {
       Row(children: [
         const Tooltip(
             message:
-                "Met auto pauzeer wordt alles de volgende podcast in de lijst automatisch gepauzeerd wanneer het begint",
+                "Met auto pauzeer wordt de volgende podcast in de lijst automatisch gepauzeerd wanneer het begint",
             child: Text("Auto pauzeer")),
-        StatefulSwitch(_autoPause),
+        StreamBuilder(
+          builder: (_, snapshot) {
+            if (snapshot.data == null) return const SizedBox.shrink();
+            return Switch(
+              value: snapshot.data!,
+              onChanged: (value) {
+                ButtonEvents.broadcast(ButtonAction(ButtonActions.setAutoPause,
+                    value ? "false" : "true", Duration.zero));
+                controller.add(value);
+              },
+            );
+          },
+          stream: controller.stream,
+        )
       ]),
+      TextButton(
+        onPressed: () {
+          _audioPlayer.setVolume(1.0);
+          _audioPlayer.setSpeed(1.0);
+          controller.add(true);
+          ButtonEvents.broadcast(
+              ButtonAction(ButtonActions.setAutoPause, "true", Duration.zero));
+        },
+        style: ButtonStyle(
+            shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18.0),
+                    side: const BorderSide(color: Colors.blue)))),
+        child: const Text("Reset", textAlign: TextAlign.center),
+      )
     ]);
-  }
-}
-
-class StatefulSwitch extends StatefulWidget {
-  const StatefulSwitch(this.autoPause, {super.key});
-
-  final bool autoPause;
-
-  @override
-  // ignore: no_logic_in_create_state
-  State<StatefulSwitch> createState() => _StatefulSwitchState(autoPause);
-}
-
-class _StatefulSwitchState extends State<StatefulSwitch> {
-  _StatefulSwitchState(this.state);
-
-  bool state;
-
-  @override
-  Widget build(BuildContext context) {
-    return Switch(
-      value: state,
-      onChanged: (value) {
-        setState(() {
-          state = !state;
-        });
-        ButtonEvents.broadcast(ButtonAction(ButtonActions.setAutoPause,
-            value ? "true" : "false", Duration.zero));
-      },
-    );
   }
 }

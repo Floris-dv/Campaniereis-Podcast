@@ -25,7 +25,7 @@ class _TrackWidget extends State<TrackWidget> {
   Duration timeStamp = Duration.zero;
   double _time = 0.0;
   bool playing = false;
-
+  bool end = false;
   Duration lengthTrack;
 
   void setTime(double seconds) {
@@ -52,6 +52,7 @@ class _TrackWidget extends State<TrackWidget> {
         case WidgetActions.pause:
           setState(() {
             playing = false;
+            end = false;
           });
 
           break;
@@ -59,12 +60,20 @@ class _TrackWidget extends State<TrackWidget> {
         case WidgetActions.play:
           setState(() {
             playing = true;
+            end = false;
           });
           setTime(time);
           break;
 
         case WidgetActions.setTime:
           setTime(time);
+          break;
+
+        case WidgetActions.end:
+          setState(() {
+            end = true;
+            playing = false;
+          });
           break;
         default:
           break;
@@ -127,7 +136,7 @@ class _TrackWidget extends State<TrackWidget> {
           onPressed: () => ButtonEvents.broadcast(ButtonAction(
               ButtonActions.pauseButtonPressed, _asset, timeStamp)));
     }
-    if (lengthTrack == timeStamp) {
+    if (end) {
       return IconButton(
           icon: const Icon(Icons.replay),
           iconSize: trackIconSize,

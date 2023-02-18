@@ -15,15 +15,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:archive/archive.dart';
 import 'package:audio_session/audio_session.dart';
-import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Future.wait([
-    AudioSession.instance.then((session) => // Audio session
-        session.configure(const AudioSessionConfiguration.speech())),
-    Settings.init() // Flutter settings screen
-  ]);
+  AudioSession.instance.then((session) => // Audio session
+      session.configure(const AudioSessionConfiguration.speech()));
 
   runApp(const MyApp());
 }
@@ -268,11 +264,11 @@ class _Player extends State<Player> {
           await _audioPlayer.seek(args.time, index: currentIndex);
           await _audioPlayer.play();
           break;
+
         case ButtonActions.setAutoPause:
           setState(() {
             _autoPause = !_autoPause;
           });
-
           break;
         default:
           break;
@@ -300,6 +296,11 @@ class _Player extends State<Player> {
     _audioPlayer.currentIndexStream.listen((event) {
       if (event == null) return;
       if (currentIndex == event) return;
+      if (trackWidgets[currentIndex].length - _audioPlayer.position <
+          const Duration(milliseconds: 100)) {
+        WidgetEvents.broadcast(WidgetAction(WidgetActions.end,
+            trackWidgets[currentIndex].asset, Duration.zero));
+      }
       setState(() {
         currentIndex = event;
       });

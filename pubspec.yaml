@@ -38,13 +38,10 @@ dependencies:
   cupertino_icons: ^1.0.2
   just_audio: ^0.9.31
   event: ^2.1.2
-  shared_preferences: ^2.0.17
   file_picker: ^5.2.5
   archive: ^3.3.6
   path_provider: ^2.0.12
   audio_session: ^0.1.13
-  just_audio_windows: ^0.2.0
-  flutter_settings_screens: ^0.3.2+2
 
 dev_dependencies:
   flutter_test:
