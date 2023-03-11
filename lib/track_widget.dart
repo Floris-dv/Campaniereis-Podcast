@@ -5,22 +5,27 @@ import 'package:campaniereis/events.dart';
 const double trackIconSize = 24.0;
 
 class TrackWidget extends StatefulWidget {
-  const TrackWidget(this.asset, this.length, {Key? key}) : super(key: key);
+  const TrackWidget(this.asset, this.length, this.shortName, {Key? key})
+      : super(key: key);
 
   final String asset;
+  final String shortName;
   final Duration length;
 
   @override
   // ignore: no_logic_in_create_state
-  State<TrackWidget> createState() => _TrackWidget(asset, length);
+  State<TrackWidget> createState() => _TrackWidget(shortName, asset, length);
 }
 
 const TextStyle _style = TextStyle(fontFamily: "Comic Sans");
+const TextStyle _smallStyle =
+    TextStyle(fontFamily: "Comic Sans", fontSize: 7.0);
 
 class _TrackWidget extends State<TrackWidget> {
-  _TrackWidget(this._asset, this.lengthTrack);
+  _TrackWidget(this._shortName, this._asset, this.lengthTrack);
 
   final String _asset;
+  final String _shortName;
 
   Duration timeStamp = Duration.zero;
   double _time = 0.0;
@@ -99,15 +104,22 @@ class _TrackWidget extends State<TrackWidget> {
     }
     return Row(
       children: [
+        SizedBox.fromSize(
+            size: Size(
+          5.0,
+          _textSize(_asset, _style).height,
+        )),
+        Text(_shortName, style: _smallStyle),
         Text(_asset, style: _style),
         SliderTheme(
             data: SliderTheme.of(context),
             child: SizedBox(
                 width: MediaQuery.of(context).size.width -
+                    _textSize(_shortName, _smallStyle).width -
                     _textSize(_asset, _style).width -
                     _textSize('$minutes:$seconds', _style).width -
                     trackIconSize -
-                    25.0,
+                    30.0,
                 child: Slider(
                     value: _time,
                     max: lengthTrack.inMicroseconds / 1000000,
@@ -115,7 +127,7 @@ class _TrackWidget extends State<TrackWidget> {
                         ButtonActions.setTime,
                         _asset,
                         Duration(microseconds: (value * 1000000).round())))))),
-        Text('$minutes:$seconds'),
+        Text('$minutes:$seconds', style: _style),
         _pauseButton(),
       ],
     );
@@ -153,7 +165,9 @@ class _TrackWidget extends State<TrackWidget> {
 
 class EmptyTrackWidget extends TrackWidget {
   const EmptyTrackWidget({Key? key})
-      : super("Aan het laden", const Duration(seconds: 1), key: key);
+      : super("Aan het laden", const Duration(seconds: 1),
+            "<<<INTERNAL DATA TESTING>>>",
+            key: key);
 
   @override
   // ignore: no_logic_in_create_state

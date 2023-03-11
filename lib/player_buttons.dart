@@ -3,39 +3,52 @@ import 'package:flutter/material.dart';
 import 'package:campaniereis/events.dart';
 
 const double playerIconSize = 24.0;
+const TextStyle _style = TextStyle(fontFamily: "Comic Sans");
 
 class PlayerButtons extends StatelessWidget {
-  const PlayerButtons(this._audioPlayer, this.asset, {Key? key})
+  const PlayerButtons(this._audioPlayer, this.asset, this.lengthTrack,
+      {Key? key})
       : super(key: key);
 
   final AudioPlayer _audioPlayer;
+
+  final Duration lengthTrack;
 
   final String asset;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(asset),
-        StreamBuilder<SequenceState?>(
-          stream: _audioPlayer.sequenceStateStream,
-          builder: (_, __) => _previousButton(),
-        ),
-        StreamBuilder<PlayerState>(
-          stream: _audioPlayer.playerStateStream,
-          builder: (_, snapshot) {
-            final PlayerState? playerState = snapshot.data;
-            return _playerPauseButton(playerState);
-          },
-        ),
-        StreamBuilder<SequenceState?>(
-          stream: _audioPlayer.sequenceStateStream,
-          builder: (_, __) {
-            return _nextButton();
-          },
-        ),
-      ],
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            asset,
+            style: _style,
+          ),
+          StreamBuilder<Duration>(
+              stream: _audioPlayer.positionStream,
+              builder: (context, snapshot) =>
+                  _slider(context, snapshot.data ?? Duration.zero)),
+          StreamBuilder<SequenceState?>(
+            stream: _audioPlayer.sequenceStateStream,
+            builder: (_, __) => _previousButton(),
+          ),
+          StreamBuilder<PlayerState>(
+            stream: _audioPlayer.playerStateStream,
+            builder: (_, snapshot) {
+              final PlayerState? playerState = snapshot.data;
+              return _playerPauseButton(playerState);
+            },
+          ),
+          StreamBuilder<SequenceState?>(
+            stream: _audioPlayer.sequenceStateStream,
+            builder: (_, __) => _nextButton(),
+          ),
+          Text('${lengthTrack.inMinutes}:${lengthTrack.inSeconds % 60}',
+              style: _style)
+        ],
+      ),
     );
   }
 
@@ -74,6 +87,7 @@ class PlayerButtons extends StatelessWidget {
   Widget _previousButton() {
     return IconButton(
         icon: const Icon(Icons.skip_previous),
+        iconSize: playerIconSize,
         onPressed: () => ButtonEvents.broadcast(
             ButtonAction(ButtonActions.previous, asset, Duration.zero)));
   }
@@ -81,7 +95,38 @@ class PlayerButtons extends StatelessWidget {
   Widget _nextButton() {
     return IconButton(
         icon: const Icon(Icons.skip_next),
+        iconSize: playerIconSize,
         onPressed: () => ButtonEvents.broadcast(
             ButtonAction(ButtonActions.skip, asset, Duration.zero)));
+  }
+
+  Size _textSize(String text, TextStyle style) {
+    final TextPainter textPainter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        maxLines: 1,
+        textDirection: TextDirection.ltr)
+      ..layout(minWidth: 0, maxWidth: double.infinity);
+    return textPainter.size;
+  }
+
+  Widget _slider(BuildContext context, Duration position) {
+    return SliderTheme(
+        data: SliderTheme.of(context),
+        child: SizedBox(
+            width: MediaQuery.of(context).size.width -
+                3 * playerIconSize -
+                _textSize(asset, _style).width -
+                _textSize(
+                        '${lengthTrack.inMinutes}:${lengthTrack.inSeconds % 60}',
+                        _style)
+                    .width -
+                50.0,
+            child: Slider(
+                value: position.inMicroseconds / 1000000,
+                max: lengthTrack.inMicroseconds / 1000000,
+                onChanged: (value) => ButtonEvents.broadcast(ButtonAction(
+                    ButtonActions.setTime,
+                    asset,
+                    Duration(microseconds: (value * 1000000).round()))))));
   }
 }

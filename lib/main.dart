@@ -1,8 +1,5 @@
-import 'dart:async';
-import 'dart:io';
-import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 
-import 'package:campaniereis/binary_audio_source.dart';
 import 'package:campaniereis/player_buttons.dart';
 import 'package:campaniereis/events.dart';
 import 'package:campaniereis/settings.dart';
@@ -11,9 +8,6 @@ import 'package:event/event.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:archive/archive.dart';
 import 'package:audio_session/audio_session.dart';
 
 void main() async {
@@ -67,132 +61,32 @@ class _Player extends State<Player> {
 
   bool _autoPause = true;
 
-  void saveFiles(String text, List<List<int>> bytes) async {
-    final directory = await getApplicationSupportDirectory()
-        .then((value) => value.create(recursive: true));
-
-    await Future.wait([
-      File("${directory.absolute.path}/Tracks.txt").writeAsString(text),
-      for (int i = 0; i < bytes.length; i++)
-        File('${directory.absolute.path}/${trackWidgets[i].asset}')
-            .writeAsBytes(bytes[i])
-    ]);
-    Messaging.broadcast(Value("Saved files to $directory"));
-  }
-
-  Future<void> loadFile() async {
-    FilePickerResult? result = await FilePicker.platform
-        .pickFiles(allowMultiple: false, withData: true);
-    if (result == null || result.files.isEmpty) return; // canceled
-
-    await _audioPlayer.dispose();
-    Messaging.broadcast(Value("Result: ${result.files.first.name}"));
-
-    final decoder = ZipDecoder();
-
-    Archive archive = decoder.decodeBytes(result.files.first.bytes!);
-    Messaging.broadcast(Value("decoded"));
-    var file = archive.findFile("Tracks.txt");
-    if (file == null) return; // Couldn't find file
-    var text = utf8.decode(file.content! as List<int>);
-    var files = List.from(text.split('\n').map((e) => e.trim()));
-    List<BinaryAudioSource> audioSources = List.empty(growable: true);
-    List<String> loadedFiles = List.empty(growable: true);
-    for (var fileName in files) {
-      ArchiveFile? file = archive.findFile(fileName);
-      if (file == null) {
-        Messaging.broadcast(Value("Couldn't find $fileName"));
-        continue;
-      }
-      audioSources.add(
-          BinaryAudioSource(file.content as List<int>, getMIMEType(fileName)));
-      loadedFiles.add(fileName);
-    }
-
-    try {
-      var durations = await Future.wait(
-          Iterable<Future<Duration?>>.generate(loadedFiles.length, (index) {
-        final AudioPlayer player = AudioPlayer();
-
-        return player.setAudioSource(audioSources[index]).catchError((error) {
-          Messaging.broadcast(
-              Value("Couldn't load ${loadedFiles[index]}: $error"));
-          return const Duration(seconds: 1);
-        });
-      }));
-
-      setState(() {
-        trackWidgets.clear();
-        trackWidgets = [
-          for (int i = 0; i < loadedFiles.length; i++)
-            TrackWidget(
-                loadedFiles[i], durations[i] ?? const Duration(seconds: 1))
-        ].toList();
-      });
-    } on PlayerException catch (e) {
-      Messaging.broadcast(Value("Player exception ${e.code}: ${e.message}"));
-    } on PlayerInterruptedException catch (e) {
-      Messaging.broadcast(Value("Player interrupted: ${e.message}"));
-    }
-    if (!kIsWeb) saveFiles(text, List.from(audioSources.map((e) => e.bytes)));
-    ButtonEvents.unsubAll();
-    WidgetEvents.unsubAll();
-    addListeners();
-    setState(() {
-      setAudioPlayer();
-    });
-    await _audioPlayer
-        .setAudioSource(ConcatenatingAudioSource(children: audioSources));
-    return;
-  }
+  List<String> shortNames = List.empty();
 
   void loadTracks() async {
-    if (kIsWeb) {
-      await loadFile();
-      return;
-    }
-    final directory = await getApplicationSupportDirectory()
-        .then((value) => value.create(recursive: true))
-        .catchError((error) {
-      Messaging.broadcast(Value("Couldn't find the support directory"));
-      return Directory.systemTemp;
-    });
+    var lines = await rootBundle
+        .loadString('assets/Tracks.txt')
+        .then<List<List<String>>>(
+          (value) =>
+              List.from(value.split('\n').map((e) => e.trim().split(' '))),
+        );
 
-    Messaging.broadcast(Value(directory.path));
-
-    var trackFile = File("${directory.absolute.path}/Tracks.txt");
-
-    if (!await trackFile.exists()) {
-      await loadFile();
-      return;
-    }
-
-    var lines = await trackFile.readAsLines();
-
-    List<Uint8List> data = await Future.wait([
-      for (var line in lines)
-        File('${directory.absolute.path}/$line').readAsBytes()
-    ]);
-
-    var durations = await Future.wait(
-        Iterable<Future<Duration?>>.generate(data.length, (index) {
-      final AudioPlayer player = AudioPlayer();
-      return player.setAudioSource(
-          BinaryAudioSource(data[index], getMIMEType(lines[index])));
-    }));
+    var names = [for (var line in lines) line[0].replaceAll(RegExp(r'_'), ' ')];
 
     setState(() {
       trackWidgets = [
         for (int i = 0; i < lines.length; i++)
-          TrackWidget(lines[i], durations[i] ?? const Duration(seconds: 1))
+          TrackWidget(names[i].substring(0, names[i].lastIndexOf('.')),
+              Duration(seconds: int.tryParse(lines[i][1]) ?? 1), lines[i][2])
       ];
       currentIndex = 0;
+      shortNames = List.from(lines.map(
+        (e) => e[2],
+      ));
     });
 
-    await _audioPlayer.setAudioSource(ConcatenatingAudioSource(children: [
-      for (int i = 0; i < data.length; i++)
-        BinaryAudioSource(data[i], getMIMEType(lines[i]))
-    ]));
+    await _audioPlayer.setAudioSource(ConcatenatingAudioSource(
+        children: [for (var name in names) AudioSource.asset("assets/$name")]));
   }
 
   void addListeners() {
@@ -345,7 +239,9 @@ class _Player extends State<Player> {
                             return const SizedBox.shrink();
                           }
                           return PlayerButtons(
-                              _audioPlayer, trackWidgets[snapshot.data!].asset);
+                              _audioPlayer,
+                              trackWidgets[snapshot.data!].asset,
+                              trackWidgets[snapshot.data!].length);
                         }),
                     for (var l in logging) Text(l)
                   ]),
@@ -354,15 +250,43 @@ class _Player extends State<Player> {
         ),
       ]),
       body: Center(
-          child: Column(children: [
-        for (var track in trackWidgets) track,
-        PlayerButtons(_audioPlayer, trackWidgets[currentIndex].asset)
-      ])),
-      floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            loadFile();
-          },
-          child: const Icon(Icons.download)),
+          child: Column(
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height - 160.0,
+            child: ListView(children: trackWidgets),
+          ),
+          Row(
+            children: [
+              TextField(
+                autocorrect: false,
+                autofillHints: shortNames,
+                decoration: InputDecoration(
+                    labelText: "Invoer",
+                    border: const OutlineInputBorder(),
+                    constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width)),
+                onSubmitted: (value) {
+                  int index = shortNames.indexOf(value);
+                  if (index == -1) {
+                    Messaging.broadcast(Value("Can't find $value!"));
+                  } else {
+                    ButtonEvents.broadcast(ButtonAction(
+                        ButtonActions.setCurrentlyPlaying,
+                        trackWidgets[index].asset,
+                        Duration.zero));
+                  }
+                },
+              ),
+            ],
+          ),
+          Center(
+              child: PlayerButtons(
+                  _audioPlayer,
+                  trackWidgets[currentIndex].asset,
+                  trackWidgets[currentIndex].length))
+        ],
+      )),
     );
   }
 }
