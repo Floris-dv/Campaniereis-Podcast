@@ -1,5 +1,16 @@
+Santa_Chiara.mp3 307 2A
+De_grafmonumenten.mp3 255 2B
+Gesu_Nuovo.mp3 465 2C
+Piazza_Bellini.mp3 182 2E
+Catacomben_San_Genaro.mp3 282 3A
+San_Lorenzo.mp3 165 3B
+Napoli_Ondergrond.mp3 360 3C
 Pozzuoli.mp3 263 5A
 Cumae.mp3 255 5B
+Villa_Arianna.mp3 150 7A
+Villa_San_Marco.mp3 102 7B
+Tweede_Complex.mp3 110 7C
+Piscina_Mirabilis.mp3 115 7D
 Inleiding_+_Villa_Dell’Ambulatio.mp3 84 8A
 De_tunnels_van_Baia.mp3 141 8B
 Teatre_Ninfeo.mp3 70 8C

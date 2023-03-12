@@ -6,13 +6,19 @@ const double playerIconSize = 24.0;
 const TextStyle _style = TextStyle(fontFamily: "Comic Sans");
 
 class PlayerButtons extends StatelessWidget {
-  const PlayerButtons(this._audioPlayer, this.asset, this.lengthTrack,
-      {Key? key})
-      : super(key: key);
+  PlayerButtons(this._audioPlayer, this.asset, Duration length, {Key? key})
+      : microSeconds = length.inMicroseconds,
+        super(key: key) {
+    dynamic seconds = length.inSeconds % 60;
+    if (seconds < 10) seconds = '0$seconds';
+    lengthTrack = '${length.inMinutes}:$seconds';
+  }
 
   final AudioPlayer _audioPlayer;
 
-  final Duration lengthTrack;
+  late String lengthTrack;
+
+  final int microSeconds;
 
   final String asset;
 
@@ -45,8 +51,7 @@ class PlayerButtons extends StatelessWidget {
             stream: _audioPlayer.sequenceStateStream,
             builder: (_, __) => _nextButton(),
           ),
-          Text('${lengthTrack.inMinutes}:${lengthTrack.inSeconds % 60}',
-              style: _style)
+          Text(lengthTrack, style: _style)
         ],
       ),
     );
@@ -116,14 +121,11 @@ class PlayerButtons extends StatelessWidget {
             width: MediaQuery.of(context).size.width -
                 3 * playerIconSize -
                 _textSize(asset, _style).width -
-                _textSize(
-                        '${lengthTrack.inMinutes}:${lengthTrack.inSeconds % 60}',
-                        _style)
-                    .width -
-                50.0,
+                _textSize(lengthTrack, _style).width -
+                70.0,
             child: Slider(
                 value: position.inMicroseconds / 1000000,
-                max: lengthTrack.inMicroseconds / 1000000,
+                max: microSeconds / 1000000,
                 onChanged: (value) => ButtonEvents.broadcast(ButtonAction(
                     ButtonActions.setTime,
                     asset,
