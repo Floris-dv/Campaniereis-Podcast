@@ -5,6 +5,9 @@ import 'package:campaniereis/events.dart';
 const double playerIconSize = 24.0;
 const TextStyle _style = TextStyle(fontFamily: "Comic Sans");
 
+const int phoneScreenWidth = 500;
+
+// ignore: must_be_immutable
 class PlayerButtons extends StatelessWidget {
   PlayerButtons(this._audioPlayer, this.asset, Duration length, {Key? key})
       : microSeconds = length.inMicroseconds,
@@ -24,6 +27,49 @@ class PlayerButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.of(context).size.width < phoneScreenWidth) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                Text(
+                  asset,
+                  style: _style,
+                ),
+                StreamBuilder<SequenceState?>(
+                  stream: _audioPlayer.sequenceStateStream,
+                  builder: (_, __) => _previousButton(),
+                ),
+                StreamBuilder<PlayerState>(
+                  stream: _audioPlayer.playerStateStream,
+                  builder: (_, snapshot) {
+                    final PlayerState? playerState = snapshot.data;
+                    return _playerPauseButton(playerState);
+                  },
+                ),
+                StreamBuilder<SequenceState?>(
+                  stream: _audioPlayer.sequenceStateStream,
+                  builder: (_, __) => _nextButton(),
+                ),
+              ],
+            ),
+            Center(
+              child: Row(
+                children: [
+                  StreamBuilder<Duration>(
+                      stream: _audioPlayer.positionStream,
+                      builder: (context, snapshot) =>
+                          _slider(context, snapshot.data ?? Duration.zero)),
+                  Text(lengthTrack, style: _style)
+                ],
+              ),
+            )
+          ],
+        ),
+      );
+    }
     return Center(
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -115,14 +161,19 @@ class PlayerButtons extends StatelessWidget {
   }
 
   Widget _slider(BuildContext context, Duration position) {
+    double width = MediaQuery.of(context).size.width;
+    if (width < phoneScreenWidth) {
+      width -= _textSize(lengthTrack, _style).width;
+    } else {
+      width -= 3 * playerIconSize +
+          _textSize(asset, _style).width +
+          _textSize(lengthTrack, _style).width +
+          70.0;
+    }
     return SliderTheme(
         data: SliderTheme.of(context),
         child: SizedBox(
-            width: MediaQuery.of(context).size.width -
-                3 * playerIconSize -
-                _textSize(asset, _style).width -
-                _textSize(lengthTrack, _style).width -
-                70.0,
+            width: width,
             child: Slider(
                 value: position.inMicroseconds / 1000000,
                 max: microSeconds / 1000000,

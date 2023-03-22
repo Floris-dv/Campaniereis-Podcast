@@ -57,7 +57,7 @@ class _Player extends State<Player> {
 
   int currentIndex = 0;
 
-  List<String> logging = List.filled(1, "Initializing logging", growable: true);
+  List<String> logging = List.filled(1, "", growable: true);
 
   bool _autoPause = true;
 
@@ -81,20 +81,25 @@ class _Player extends State<Player> {
       ];
       currentIndex = 0;
       shortNames = List.from(lines.map(
-        (e) => e[2],
+        (e) => e[2].toUpperCase(),
       ));
     });
 
-    await _audioPlayer.setAudioSource(ConcatenatingAudioSource(
-        children: [for (var name in names) AudioSource.asset("assets/$name")]));
+    await _audioPlayer.setAudioSource(
+        ConcatenatingAudioSource(children: [
+          for (var name in names) AudioSource.asset("assets/$name")
+        ]),
+        preload: false);
   }
 
   void addListeners() {
     Messaging.subscribe((args) {
       if (args == null) return;
-      if (kDebugMode) print(args.value);
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => setState(() => logging.add(args.value)));
+      if (kDebugMode) {
+        print(args.value);
+        WidgetsBinding.instance.addPostFrameCallback(
+            (_) => setState(() => logging.add(args.value)));
+      }
     });
     ButtonEvents.subscribe((ButtonAction? args) async {
       if (args == null) return;
@@ -253,32 +258,30 @@ class _Player extends State<Player> {
           child: Column(
         children: [
           SizedBox(
-            height: MediaQuery.of(context).size.height - 160.0,
+            height: MediaQuery.of(context).size.height -
+                160.0 -
+                (MediaQuery.of(context).size.width < 500 ? 40.0 : 0),
             child: ListView(children: trackWidgets),
           ),
-          Row(
-            children: [
-              TextField(
-                autocorrect: false,
-                autofillHints: shortNames,
-                decoration: InputDecoration(
-                    labelText: "Invoer",
-                    border: const OutlineInputBorder(),
-                    constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width)),
-                onSubmitted: (value) {
-                  int index = shortNames.indexOf(value);
-                  if (index == -1) {
-                    Messaging.broadcast(Value("Can't find $value!"));
-                  } else {
-                    ButtonEvents.broadcast(ButtonAction(
-                        ButtonActions.setCurrentlyPlaying,
-                        trackWidgets[index].asset,
-                        Duration.zero));
-                  }
-                },
-              ),
-            ],
+          TextField(
+            autocorrect: false,
+            autofillHints: shortNames,
+            decoration: InputDecoration(
+                labelText: "Invoer",
+                border: const OutlineInputBorder(),
+                constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width)),
+            onSubmitted: (value) {
+              int index = shortNames.indexOf(value.toUpperCase());
+              if (index == -1) {
+                Messaging.broadcast(Value("Can't find $value!"));
+              } else {
+                ButtonEvents.broadcast(ButtonAction(
+                    ButtonActions.setCurrentlyPlaying,
+                    trackWidgets[index].asset,
+                    Duration.zero));
+              }
+            },
           ),
           Center(
               child: PlayerButtons(

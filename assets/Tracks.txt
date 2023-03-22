@@ -1,3 +1,7 @@
+Introductie.mp3 75 0
+Palazzo_Reale.mp3 509 1A
+Galleria_Umberto_I.mp3 231 1C
+Quartieri_Spagnoli_en_rol_camorra.mp3 211 1D
 Santa_Chiara.mp3 307 2A
 De_grafmonumenten.mp3 255 2B
 Gesu_Nuovo.mp3 465 2C
@@ -5,8 +9,17 @@ Piazza_Bellini.mp3 182 2E
 Catacomben_San_Genaro.mp3 282 3A
 San_Lorenzo.mp3 165 3B
 Napoli_Ondergrond.mp3 360 3C
+Dom_van_Napoli.mp3 117 4A
+Decumanus.mp3 75 4B
+Via_San_Gregorio_Armeno.mp3 175 4C
+Decumanus_2.mp3 103 4D
 Pozzuoli.mp3 263 5A
 Cumae.mp3 255 5B
+Geschiedenis_van_Paestum.mp3 107 6A
+De_route.mp3 230 6B
+Tempel_van_Athena.mp3 115 6C
+Tweede_tempel_van_Hera.mp3 161 6D
+De_eerste_tempel_van_Hera.mp3 151 6E
 Villa_Arianna.mp3 150 7A
 Villa_San_Marco.mp3 102 7B
 Tweede_Complex.mp3 110 7C
