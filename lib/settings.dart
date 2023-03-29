@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:campaniereis/track_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:campaniereis/events.dart';
@@ -7,12 +6,9 @@ import 'package:campaniereis/events.dart';
 class SettingsWidget extends StatelessWidget {
   final AudioPlayer _audioPlayer;
 
-  final List<TrackWidget> trackWidgets;
-
   final controller = StreamController<bool>();
 
-  SettingsWidget(this._audioPlayer, this.trackWidgets, bool _autoPause,
-      {super.key}) {
+  SettingsWidget(this._audioPlayer, bool _autoPause, {super.key}) {
     controller.add(_autoPause);
   }
 
@@ -68,7 +64,7 @@ class SettingsWidget extends StatelessWidget {
               value: snapshot.data!,
               onChanged: (value) {
                 ButtonEvents.broadcast(ButtonAction(ButtonActions.setAutoPause,
-                    value ? "false" : "true", Duration.zero));
+                    value ? "true" : "false", Duration.zero));
                 controller.add(value);
               },
             );

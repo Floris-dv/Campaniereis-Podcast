@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart' show rootBundle;
 
 import 'package:campaniereis/player_buttons.dart';
@@ -55,6 +57,8 @@ class _Player extends State<Player> {
 
   List<TrackWidget> trackWidgets = [const EmptyTrackWidget()].toList();
 
+  final StreamController<int> _currentIndexController =
+      StreamController<int>.broadcast();
   int currentIndex = 0;
 
   List<String> logging = List.filled(1, "", growable: true);
@@ -62,6 +66,8 @@ class _Player extends State<Player> {
   bool _autoPause = true;
 
   List<String> shortNames = List.empty();
+
+  PlayerButtons? _buttons;
 
   void loadTracks() async {
     var lines = await rootBundle
@@ -75,21 +81,19 @@ class _Player extends State<Player> {
 
     setState(() {
       trackWidgets = [
+        const EmptyTrackWidget(),
         for (int i = 0; i < lines.length; i++)
-          TrackWidget(names[i].substring(0, names[i].lastIndexOf('.')),
-              Duration(seconds: int.tryParse(lines[i][1]) ?? 1), lines[i][2])
+          TrackWidget(
+            names[i].substring(0, names[i].lastIndexOf('.')),
+            Duration(seconds: int.tryParse(lines[i][1]) ?? 0),
+            lines[i][2],
+          )
       ];
       currentIndex = 0;
       shortNames = List.from(lines.map(
         (e) => e[2].toUpperCase(),
       ));
     });
-
-    await _audioPlayer.setAudioSource(
-        ConcatenatingAudioSource(children: [
-          for (var name in names) AudioSource.asset("assets/$name")
-        ]),
-        preload: false);
   }
 
   void addListeners() {
@@ -100,6 +104,17 @@ class _Player extends State<Player> {
         WidgetsBinding.instance.addPostFrameCallback(
             (_) => setState(() => logging.add(args.value)));
       }
+    });
+
+    _currentIndexController.stream.listen((event) {
+      if (currentIndex == event) return;
+
+      setState(() {
+        currentIndex = event;
+        _buttons = PlayerButtons(_audioPlayer, trackWidgets[currentIndex].asset,
+            trackWidgets[currentIndex].length);
+      });
+      _audioPlayer.setAsset('assets/${trackWidgets[currentIndex].asset}');
     });
     ButtonEvents.subscribe((ButtonAction? args) async {
       if (args == null) return;
@@ -113,6 +128,8 @@ class _Player extends State<Player> {
             if (_audioPlayer.playing) {
               WidgetEvents.broadcast(WidgetAction(WidgetActions.pause,
                   trackWidgets[currentIndex].asset, args.time));
+              Messaging.broadcast(
+                  Value("Pausing ${trackWidgets[currentIndex].asset}"));
               await _audioPlayer.pause();
             } else {
               WidgetEvents.broadcast(WidgetAction(WidgetActions.play,
@@ -120,32 +137,24 @@ class _Player extends State<Player> {
               await _audioPlayer.play();
             }
           }
-
           break;
         case ButtonActions.previous:
-          if (_audioPlayer.hasPrevious) {
-            ButtonEvents.broadcast(ButtonAction(
-                ButtonActions.setCurrentlyPlaying,
-                trackWidgets[_audioPlayer.previousIndex!].asset,
-                args.time));
-          }
+          _seek(currentIndex - 1);
           break;
         case ButtonActions.skip:
-          if (_audioPlayer.hasNext) {
-            ButtonEvents.broadcast(ButtonAction(
-                ButtonActions.setCurrentlyPlaying,
-                trackWidgets[_audioPlayer.nextIndex!].asset,
-                args.time));
-          }
+          _seek(currentIndex + 1);
           break;
         case ButtonActions.setTime:
           if (args.asset == trackWidgets[currentIndex].asset) {
             await _audioPlayer.seek(args.time);
           }
           WidgetEvents.broadcast(
+              WidgetAction(WidgetActions.play, args.asset, args.time));
+          WidgetEvents.broadcast(
               WidgetAction(WidgetActions.setTime, args.asset, args.time));
           break;
         case ButtonActions.setCurrentlyPlaying:
+          Messaging.broadcast(Value("Setting ${args.asset} to play"));
           // Need to stop the previous song
           if (_audioPlayer.playing) {
             WidgetEvents.broadcast(WidgetAction(WidgetActions.pause,
@@ -153,26 +162,41 @@ class _Player extends State<Player> {
           }
           for (int i = 0; i < trackWidgets.length; i++) {
             if (trackWidgets[i].asset == args.asset) {
-              setState(() => currentIndex = i);
+              setState(() {
+                currentIndex = i;
+                _buttons = PlayerButtons(
+                    _audioPlayer,
+                    trackWidgets[currentIndex].asset,
+                    trackWidgets[currentIndex].length);
+              });
               break;
             }
           }
 
           WidgetEvents.broadcast(WidgetAction(
               WidgetActions.play, trackWidgets[currentIndex].asset, args.time));
-          await _audioPlayer.seek(args.time, index: currentIndex);
+          await _audioPlayer.setAudioSource(
+              AudioSource.asset(
+                  'assets/${trackWidgets[currentIndex].asset}.mp3'),
+              initialPosition: args.time);
           await _audioPlayer.play();
           break;
 
         case ButtonActions.setAutoPause:
           setState(() {
-            _autoPause = !_autoPause;
+            _autoPause = args.asset == "true";
           });
-          break;
-        default:
           break;
       }
     });
+  }
+
+  void _seek(int index) {
+    if (index < 0 || index >= trackWidgets.length) {
+      return;
+    }
+
+    _currentIndexController.add(index);
   }
 
   void setAudioPlayer() {
@@ -186,23 +210,20 @@ class _Player extends State<Player> {
         .listen((event) => WidgetEvents.broadcast(WidgetAction(
             WidgetActions.setTime, trackWidgets[currentIndex].asset, event)));
 
-    _audioPlayer.sequenceStateStream.listen((event) {
-      if (event == null) return;
-      if (!_audioPlayer.playing) return;
-      if (_autoPause) _audioPlayer.pause();
-    });
-
-    _audioPlayer.currentIndexStream.listen((event) {
-      if (event == null) return;
-      if (currentIndex == event) return;
-      if (trackWidgets[currentIndex].length - _audioPlayer.position <
-          const Duration(milliseconds: 100)) {
+    _audioPlayer.playerStateStream.listen((event) {
+      if (event.processingState == ProcessingState.completed) {
         WidgetEvents.broadcast(WidgetAction(WidgetActions.end,
             trackWidgets[currentIndex].asset, Duration.zero));
+        if (_autoPause) {
+          _audioPlayer.pause();
+          setState(() {
+            _currentIndexController.add(0);
+            _buttons = null;
+          });
+        } else {
+          _seek(currentIndex + 1);
+        }
       }
-      setState(() {
-        currentIndex = event;
-      });
     });
   }
 
@@ -236,18 +257,17 @@ class _Player extends State<Player> {
                 builder: (context) => Scaffold(
                   appBar: AppBar(title: const Text("Instellingen")),
                   body: Column(children: [
-                    SettingsWidget(_audioPlayer, trackWidgets, _autoPause),
+                    SettingsWidget(_audioPlayer, _autoPause),
                     StreamBuilder(
                         stream: _audioPlayer.currentIndexStream,
-                        builder: (_, snapshot) {
-                          if (snapshot.data == null) {
-                            return const SizedBox.shrink();
-                          }
-                          return PlayerButtons(
-                              _audioPlayer,
-                              trackWidgets[snapshot.data!].asset,
-                              trackWidgets[snapshot.data!].length);
-                        }),
+                        builder: (_, __) => Center(
+                            child: _buttons != null
+                                ? PlayerButtons(
+                                    _audioPlayer,
+                                    trackWidgets[currentIndex].asset,
+                                    trackWidgets[currentIndex].length)
+                                : const Text(
+                                    'Selecteer iets of voer een nummer in'))),
                     for (var l in logging) Text(l)
                   ]),
                 ),
@@ -261,7 +281,7 @@ class _Player extends State<Player> {
             height: MediaQuery.of(context).size.height -
                 160.0 -
                 (MediaQuery.of(context).size.width < 500 ? 40.0 : 0),
-            child: ListView(children: trackWidgets),
+            child: ListView(children: trackWidgets.sublist(1)),
           ),
           TextField(
             autocorrect: false,
@@ -278,16 +298,20 @@ class _Player extends State<Player> {
               } else {
                 ButtonEvents.broadcast(ButtonAction(
                     ButtonActions.setCurrentlyPlaying,
-                    trackWidgets[index].asset,
+                    trackWidgets[index +
+                            1] // First trackwidget (empty) has no shortName
+                        .asset,
                     Duration.zero));
               }
             },
           ),
           Center(
-              child: PlayerButtons(
-                  _audioPlayer,
-                  trackWidgets[currentIndex].asset,
-                  trackWidgets[currentIndex].length))
+              child: _buttons != null
+                  ? PlayerButtons(
+                      _audioPlayer,
+                      trackWidgets[currentIndex].asset,
+                      trackWidgets[currentIndex].length)
+                  : const Text('Selecteer iets of voer een nummer in')),
         ],
       )),
     );

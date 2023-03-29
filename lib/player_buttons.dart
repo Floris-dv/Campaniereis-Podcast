@@ -1,6 +1,7 @@
 import 'package:just_audio/just_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:campaniereis/events.dart';
+import 'dart:math';
 
 const double playerIconSize = 24.0;
 const TextStyle _style = TextStyle(fontFamily: "Comic Sans");
@@ -127,11 +128,10 @@ class PlayerButtons extends StatelessWidget {
               ButtonActions.pauseButtonPressed, asset, _audioPlayer.position)));
     } else {
       return IconButton(
-        icon: const Icon(Icons.replay),
-        iconSize: playerIconSize,
-        onPressed: () => _audioPlayer.seek(Duration.zero,
-            index: _audioPlayer.effectiveIndices?.first),
-      );
+          icon: const Icon(Icons.replay),
+          iconSize: playerIconSize,
+          onPressed: () => ButtonEvents.broadcast(ButtonAction(
+              ButtonActions.setCurrentlyPlaying, asset, Duration.zero)));
     }
   }
 
@@ -176,7 +176,8 @@ class PlayerButtons extends StatelessWidget {
             width: width,
             child: Slider(
                 value: position.inMicroseconds / 1000000,
-                max: microSeconds / 1000000,
+                max: max(
+                    position.inMicroseconds / 1000000, microSeconds / 1000000),
                 onChanged: (value) => ButtonEvents.broadcast(ButtonAction(
                     ButtonActions.setTime,
                     asset,

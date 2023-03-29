@@ -1,6 +1,7 @@
 import 'package:event/event.dart';
 import 'package:flutter/material.dart';
 import 'package:campaniereis/events.dart';
+import 'dart:math';
 
 const double trackIconSize = 24.0;
 
@@ -40,50 +41,59 @@ class _TrackWidget extends State<TrackWidget> {
     });
   }
 
+  void widgetEventsCallback(WidgetAction? args) {
+    if (args == null) return;
+    if (args.asset != _asset) return;
+
+    double time = args.time.inMicroseconds.toDouble();
+    time /= 1000000;
+
+    switch (args.action) {
+      case WidgetActions.pause:
+        setState(() {
+          playing = false;
+          end = false;
+        });
+
+        break;
+
+      case WidgetActions.play:
+        setState(() {
+          playing = true;
+          end = false;
+        });
+        setTime(time);
+        break;
+
+      case WidgetActions.setTime:
+        setTime(time);
+        break;
+
+      case WidgetActions.end:
+        Messaging.broadcast(Value("Ending $_asset"));
+        setState(() {
+          end = true;
+          playing = false;
+        });
+        break;
+      default:
+        break;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
 
     Messaging.broadcast(Value('TrackWidget of $_asset being loaded'));
 
-    WidgetEvents.subscribe((WidgetAction? args) {
-      if (args == null) return;
-      if (args.asset != _asset) return;
+    WidgetEvents.subscribe(widgetEventsCallback);
+  }
 
-      double time = args.time.inMicroseconds.toDouble();
-      time /= 1000000;
-
-      switch (args.action) {
-        case WidgetActions.pause:
-          setState(() {
-            playing = false;
-            end = false;
-          });
-
-          break;
-
-        case WidgetActions.play:
-          setState(() {
-            playing = true;
-            end = false;
-          });
-          setTime(time);
-          break;
-
-        case WidgetActions.setTime:
-          setTime(time);
-          break;
-
-        case WidgetActions.end:
-          setState(() {
-            end = true;
-            playing = false;
-          });
-          break;
-        default:
-          break;
-      }
-    });
+  @override
+  void dispose() {
+    WidgetEvents.unsub(widgetEventsCallback);
+    super.dispose();
   }
 
   Size _textSize(String text, TextStyle style) {
@@ -122,7 +132,7 @@ class _TrackWidget extends State<TrackWidget> {
                     30.0,
                 child: Slider(
                     value: _time,
-                    max: lengthTrack.inMicroseconds / 1000000,
+                    max: max(_time, lengthTrack.inMicroseconds / 1000000),
                     onChanged: (value) => ButtonEvents.broadcast(ButtonAction(
                         ButtonActions.setTime,
                         _asset,
@@ -165,25 +175,22 @@ class _TrackWidget extends State<TrackWidget> {
 
 class EmptyTrackWidget extends TrackWidget {
   const EmptyTrackWidget({Key? key})
-      : super("Aan het laden", const Duration(seconds: 1),
-            "<<<INTERNAL DATA TESTING>>>",
-            key: key);
+      : super(
+          "Voer iets in!",
+          const Duration(seconds: 1),
+          "<<<INTERNAL DATA TESTING>>>",
+          key: key,
+        );
 
   @override
-  // ignore: no_logic_in_create_state
   State<EmptyTrackWidget> createState() => _EmptyTrackWidget();
 }
 
 class _EmptyTrackWidget extends State<EmptyTrackWidget> {
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Row(children: [
-      const Text("Aan het laden!", style: _style),
+      const Text("Voer iets in!", style: _style),
       SliderTheme(
           data: SliderTheme.of(context),
           child: SizedBox(

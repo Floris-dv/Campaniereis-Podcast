@@ -61,6 +61,8 @@ class WidgetEvents {
   static void broadcast(WidgetAction action) => _event.broadcast(action);
 
   static void subscribeStream(StreamSink sink) => _event.subscribeStream(sink);
+
+  static void unsub(EventHandler<WidgetAction> f) => _event.unsubscribe(f);
 }
 
 class Messaging {
